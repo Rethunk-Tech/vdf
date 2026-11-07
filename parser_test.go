@@ -1,9 +1,9 @@
 package vdf
 
 import (
-	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -13,9 +13,9 @@ import (
 
 // Ensure the parser can parse strings into Statement ASTs.
 func TestParser_ParseStatement(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		s   string
-		m   map[string]interface{}
+		m   map[string]any
 		err error
 	}{
 		// Single field statement
@@ -25,8 +25,8 @@ func TestParser_ParseStatement(t *testing.T) {
 	"TimeNextStatsReport"      "1234567890"
 	"ContentStatsID"           "-7123456789012345678"
 }`,
-			m: map[string]interface{}{
-				"Example": map[string]interface{}{
+			m: map[string]any{
+				"Example": map[string]any{
 					"TimeNextStatsReport": "1234567890",
 					"ContentStatsID":      "-7123456789012345678",
 				},
@@ -49,14 +49,14 @@ func TestParser_ParseStatement(t *testing.T) {
    "player"    "3"
  }
 }`,
-			m: map[string]interface{}{
-				"Root": map[string]interface{}{
+			m: map[string]any{
+				"Root": map[string]any{
 					"attr1": "hey-ho",
 					"attr2": "ho-hey",
-					"map1": map[string]interface{}{
+					"map1": map[string]any{
 						"foo": "Q79v5tbar",
 					},
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"val":    "1",
 						"map":    "2",
 						"player": "3",
@@ -80,14 +80,14 @@ func TestParser_ParseStatement(t *testing.T) {
    "pl\"ayer"    "3"
  }
 }`,
-			m: map[string]interface{}{
-				"Root": map[string]interface{}{
+			m: map[string]any{
+				"Root": map[string]any{
 					"attr1": "hey-ho",
 					"attr2": "ho",
-					"map1": map[string]interface{}{
+					"map1": map[string]any{
 						"foo": "Q79v5tbar",
 					},
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"v\\al":    "1",
 						"map":      "2",
 						"pl\"ayer": "3",
@@ -112,14 +112,14 @@ func TestParser_ParseStatement(t *testing.T) {
    "pl\"ayer"    "3"
  }
 }`,
-			m: map[string]interface{}{
-				"Root": map[string]interface{}{
+			m: map[string]any{
+				"Root": map[string]any{
 					"attr1": "hey-ho",
 					"attr2": "ho",
-					"map1": map[string]interface{}{
+					"map1": map[string]any{
 						"foo": "Q79v5tbar",
 					},
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"v\\al":    "1",
 						"map":      "2",
 						"pl\"ayer": "3",
@@ -146,14 +146,14 @@ func TestParser_ParseStatement(t *testing.T) {
    "pl\"ayer"    "3"
  }
 }`,
-			m: map[string]interface{}{
-				"Root": map[string]interface{}{
+			m: map[string]any{
+				"Root": map[string]any{
 					"attr1": "hey-ho",
 					"attr2": "ho",
-					"map1": map[string]interface{}{
+					"map1": map[string]any{
 						"foo": "Q79v5tbar",
 					},
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"v\\al":    "1",
 						"map":      "2",
 						"pl\"ayer": "3",
@@ -168,8 +168,8 @@ func TestParser_ParseStatement(t *testing.T) {
  attr1       "hey-ho"
  "attr2"       ho
 }`,
-			m: map[string]interface{}{
-				"Root": map[string]interface{}{
+			m: map[string]any{
+				"Root": map[string]any{
 					"attr1": "hey-ho",
 					"attr2": "ho",
 				},
@@ -187,9 +187,9 @@ func TestParser_ParseStatement(t *testing.T) {
    "attr2" "world"
  }
 }`,
-			m: map[string]interface{}{
-				"Root": map[string]interface{}{
-					"map": map[string]interface{}{
+			m: map[string]any{
+				"Root": map[string]any{
+					"map": map[string]any{
 						"attr1": "hello",
 						"attr2": "world",
 					},
@@ -200,9 +200,13 @@ func TestParser_ParseStatement(t *testing.T) {
 
 	for i, tt := range tests {
 		m, err := NewParser(strings.NewReader(tt.s)).Parse()
-		if !reflect.DeepEqual(tt.err, (err)) {
-			t.Errorf("%d. %q: error mismatch:\n  exp=%s\n  got=%s\n\n", i, tt.s, tt.err, err)
-		} else if tt.err == nil && !reflect.DeepEqual(tt.m, m) {
+		if tt.err != nil {
+			if err == nil || err.Error() != tt.err.Error() {
+				t.Errorf("%d. %q: error mismatch:\n  exp=%s\n  got=%s\n\n", i, tt.s, tt.err, err)
+			}
+		} else if err != nil {
+			t.Errorf("%d. %q: unexpected error: %s", i, tt.s, err)
+		} else if !reflect.DeepEqual(tt.m, m) {
 			t.Errorf("%d. %q\n\nparse mismatch:\n\nexp=%#v\n\ngot=%#v\n\n", i, tt.s, tt.m, m)
 		}
 	}
@@ -210,34 +214,39 @@ func TestParser_ParseStatement(t *testing.T) {
 
 func TestParser_Parse(t *testing.T) {
 	getReader := func(fileName string) (io.Reader, error) {
-		return os.Open(fileName)
+		root, err := os.OpenRoot("testdata")
+		if err != nil {
+			return nil, err
+		}
+		return root.Open(filepath.Base(fileName))
 	}
 
 	tests := []struct {
 		name     string
 		fileName string
-		want     func(got map[string]interface{}, err error)
+		want     func(got map[string]any, err error)
 	}{
 		{
 			name:     "empty file",
 			fileName: "testdata/empty.vdf",
-			want: func(got map[string]interface{}, err error) {
+			want: func(got map[string]any, err error) {
 				require.Error(t, err)
 			},
 		},
 		{
 			name:     "corrupted file",
 			fileName: "testdata/corrupted.vdf",
-			want: func(got map[string]interface{}, err error) {
-				require.True(t, errors.Is(err, ErrNotValidFormat))
+			want: func(got map[string]any, err error) {
+				require.ErrorIs(t, err, ErrNotValidFormat)
 			},
 		},
 		{
 			name:     "ok",
 			fileName: "testdata/ok.vdf",
-			want: func(got map[string]interface{}, err error) {
+			want: func(got map[string]any, err error) {
 				require.NoError(t, err)
-				saveFile := got["SaveFile"].(map[string]interface{})
+				saveFile, ok := got["SaveFile"].(map[string]any)
+				require.True(t, ok)
 				require.Equal(t, "ciccio", saveFile["team1"])
 				require.Equal(t, "pasticcio", saveFile["team2"])
 			},
@@ -247,24 +256,24 @@ func TestParser_Parse(t *testing.T) {
 		{
 			name:     "gamestate_integration_consolesample",
 			fileName: "testdata/gamestate_integration_consolesample.cfg",
-			want: func(got map[string]interface{}, err error) {
+			want: func(got map[string]any, err error) {
 				require.NoError(t, err)
-				expected := map[string]interface{}{
-					"Console Sample v.1": map[string]interface{}{
+				expected := map[string]any{
+					"Console Sample v.1": map[string]any{
 						"uri":       "http://127.0.0.1:3000",
 						"timeout":   "5.0",
 						"buffer":    "0.1",
 						"throttle":  "0.5",
 						"heartbeat": "60.0",
-						"auth": map[string]interface{}{
+						"auth": map[string]any{ //nolint:gosec // the sample token is a public example from the Valve wiki
 							"token": "CCWJu64ZV3JHDT8hZc",
 						},
-						"output": map[string]interface{}{
+						"output": map[string]any{
 							"precision_time":     "3",
 							"precision_position": "1",
 							"precision_vector":   "3",
 						},
-						"data": map[string]interface{}{
+						"data": map[string]any{
 							"provider":           "1",
 							"map":                "1",
 							"round":              "1",
@@ -284,10 +293,10 @@ func TestParser_Parse(t *testing.T) {
 		{
 			name:     "broken and unsupported comment",
 			fileName: "testdata/broken_comment.cfg",
-			want: func(got map[string]interface{}, err error) {
+			want: func(got map[string]any, err error) {
 				require.NoError(t, err)
-				expected := map[string]interface{}{
-					"Broken Comment Sample v.1": map[string]interface{}{
+				expected := map[string]any{
+					"Broken Comment Sample v.1": map[string]any{
 						"uri":     "http://127.0.0.1:3456",
 						"timeout": "8.0",
 					},
@@ -300,7 +309,7 @@ func TestParser_Parse(t *testing.T) {
 		{
 			name:     "no curly brace",
 			fileName: "testdata/no_curly_brace.vdf",
-			want: func(got map[string]interface{}, err error) {
+			want: func(got map[string]any, err error) {
 				require.Error(t, err)
 			},
 		},
@@ -410,7 +419,7 @@ func FuzzParser_Parse(f *testing.F) {
 		f.Add(tc)
 	}
 	f.Fuzz(func(t *testing.T, input string) {
-		NewParser(strings.NewReader(input)).Parse()
+		_, _ = NewParser(strings.NewReader(input)).Parse()
 	})
 }
 

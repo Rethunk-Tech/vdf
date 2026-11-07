@@ -138,7 +138,7 @@ func isDigit(ch rune) bool {
 	return (ch >= '0' && ch <= '9')
 }
 
-// isComment returns true if this line starts with a comment ("//")
+// isComment returns true if this line starts with a comment ("//").
 func isComment(ch rune, s *Scanner) bool {
 	if ch != '/' {
 		return false

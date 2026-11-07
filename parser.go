@@ -43,7 +43,7 @@ func (p *Parser) scan(respectWhitespace bool) (Token, string) {
 func (p *Parser) unscan() { p.buf.n = 1 }
 
 // scanIgnoreWSAndComments ignores whitespace, end-of-line and comment tokens
-// during scanning. It returns the next token + string that is not WS, EOL or CommentDoubleSlash
+// during scanning. It returns the next token + string that is not WS, EOL or CommentDoubleSlash.
 func (p *Parser) scanIgnoreWSAndComments() (Token, string) {
 	tok, lit := p.scan(false)
 
@@ -74,9 +74,8 @@ func (p *Parser) scanIgnoreWSAndComments() (Token, string) {
 // a map as a key / value pair.
 // The value is a string (normal value) or a map[string]interface{}
 // again if there is a nested structure.
-func (p *Parser) Parse() (map[string]interface{}, error) {
-	m := make(map[string]interface{})
-	key := ""
+func (p *Parser) Parse() (map[string]any, error) {
+	m := make(map[string]any)
 
 	// The first part is a simple ident (as a main map key)
 	tok, lit, err := p.scanMapKey()
@@ -86,7 +85,7 @@ func (p *Parser) Parse() (map[string]interface{}, error) {
 	if tok != Ident {
 		return nil, fmt.Errorf("found %q, expected an ident as a first part", lit)
 	}
-	key = lit
+	key := lit
 
 	tok, lit = p.scanIgnoreWSAndComments()
 	if tok != CurlyBraceOpen {
@@ -107,16 +106,16 @@ func (p *Parser) scanMapKey() (Token, string, error) {
 	// Get the key
 	if tok == QuotationMark {
 		return p.scanIdentSurroundedQuotationMark()
-	} else if tok == Ident {
+	}
+	if tok == Ident {
 		return tok, lit, nil
 	}
 
 	return Illegal, lit, nil
 }
 
-func (p *Parser) parseMap() (map[string]interface{}, error) {
-	m := make(map[string]interface{})
-	key := ""
+func (p *Parser) parseMap() (map[string]any, error) {
+	m := make(map[string]any)
 
 	// The first part should be a open curly brace
 	tok, _ := p.scanIgnoreWSAndComments()
@@ -126,6 +125,7 @@ func (p *Parser) parseMap() (map[string]interface{}, error) {
 	var err error
 	for {
 		// At first: A key
+		var key string
 		tok, lit := p.scanIgnoreWSAndComments()
 		switch tok {
 		case QuotationMark:
@@ -136,12 +136,9 @@ func (p *Parser) parseMap() (map[string]interface{}, error) {
 		case Ident:
 			key = lit
 
-			// The default statement would also cover tokens like:
-			//	- CommentDoubleSlash
-			//		|-> Should in theory never happen, because comments
-			//			are handled by scanIgnoreWSAndComments() already
-			//	- CurlyBraceClose
-		default:
+			// CommentDoubleSlash cannot occur here: scanIgnoreWSAndComments skips comments.
+			// CurlyBraceClose ends the map.
+		case Illegal, EOF, WS, EOL, CurlyBraceOpen, CurlyBraceClose, EscapeSequence, CommentDoubleSlash:
 			return m, nil
 		}
 
@@ -163,9 +160,8 @@ func (p *Parser) parseMap() (map[string]interface{}, error) {
 			}
 			mergeMap(m, m1, key)
 
-			// The default statement would also cover tokens like:
-			//	- CurlyBraceClose
-		default:
+			// CurlyBraceClose ends the map.
+		case Illegal, EOF, WS, EOL, CurlyBraceClose, EscapeSequence, CommentDoubleSlash:
 			return m, nil
 		}
 	}
@@ -174,14 +170,12 @@ func (p *Parser) parseMap() (map[string]interface{}, error) {
 func (p *Parser) scanIdentSurroundedQuotationMark() (Token, string, error) {
 	var buf bytes.Buffer
 	escaped := false
-	terminated := false
 	for {
 		tok, lit := p.scan(true)
-		if tok == EOF && !terminated {
+		if tok == EOF {
 			return tok, "", ErrNotValidFormat
 		}
 		if tok == QuotationMark && !escaped {
-			terminated = true
 			// We don`t unscan here, because
 			// we don`t need this quotation mark anymore.
 			break
@@ -214,13 +208,13 @@ func (p *Parser) scanIdentSurroundedQuotationMark() (Token, string, error) {
 	return Ident, buf.String(), nil
 }
 
-// VDF files can contain duplicates of keys, when this occurs we need to merge the existing map and the returned map
-func mergeMap(m, r map[string]interface{}, key string) map[string]interface{} {
+// VDF files can contain duplicates of keys, when this occurs we need to merge the existing map and the returned map.
+func mergeMap(m, r map[string]any, key string) map[string]any {
 	if _, ok := m[key]; !ok {
 		m[key] = r
 	} else {
 		for k, v := range r {
-			if t, ok := m[key].(map[string]interface{}); ok {
+			if t, ok := m[key].(map[string]any); ok {
 				t[k] = v
 			}
 		}
