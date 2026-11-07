@@ -54,6 +54,10 @@ func (p *Parser) scanIgnoreWSAndComments() (Token, string) {
 			for tok != EOL && tok != EOF {
 				tok, _ = p.scan(true)
 			}
+			// The scanner reports a NUL as EOF but can read past it, so EOF must stop here.
+			if tok == EOF {
+				return tok, ""
+			}
 			continue
 		}
 		if tok != WS && tok != EOL {
