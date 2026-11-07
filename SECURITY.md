@@ -14,10 +14,14 @@ Please do not open a public issue for a suspected vulnerability first.
 
 ## What is in scope
 
-<!-- scaffold: the untrusted inputs this package handles, and each property a crafted input must not
-break (an escape, an unbounded allocation, a panic). One bullet each, naming the API. -->
+- `Parser.Parse` and `Scanner.Scan` read arbitrary text. A crafted input must not panic, loop
+  forever or read outside the reader; the fuzz targets in the test files cover this.
+- `Write` renders caller-built maps. A key or value holding a quotation mark, a backslash or a
+  newline must not change the document's structure, which `quote` and the round-trip fuzz target
+  check.
 
 ## What is out of scope
 
-<!-- scaffold: what the caller is trusted to have checked already, and behaviour that is intended
-rather than a vulnerability. -->
+- Input size and nesting depth. Parsing recurses once per nested section, so a caller reading
+  untrusted files bounds the reader and rejects absurd depth before or around `Parse`.
+- Which keys and values an application accepts after parsing.

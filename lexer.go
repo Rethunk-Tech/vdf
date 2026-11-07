@@ -26,7 +26,7 @@ func (s *Scanner) read() rune {
 	return ch
 }
 
-// unread places the previously read rune back on the reader.
+// unread places the most recently read rune back on the reader.
 func (s *Scanner) unread() {
 	_ = s.r.UnreadRune()
 }

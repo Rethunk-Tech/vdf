@@ -39,7 +39,7 @@ func (p *Parser) scan(respectWhitespace bool) (Token, string) {
 	return tok, lit
 }
 
-// unscan pushes the previously read token back onto the buffer.
+// unscan pushes the most recently read token back onto the buffer.
 func (p *Parser) unscan() { p.buf.n = 1 }
 
 // scanIgnoreWSAndComments ignores whitespace, end-of-line and comment tokens
