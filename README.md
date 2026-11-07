@@ -1,7 +1,7 @@
 # vdf: A Lexer and Parser for Valves Data Format (known as vdf)
 
-[![GoDoc](https://pkg.go.dev/badge/github.com/andygrunwald/vdf?utm_source=godoc)](https://pkg.go.dev/github.com/andygrunwald/vdf)
-[![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/andygrunwald/vdf)
+[![GoDoc](https://pkg.go.dev/badge/github.com/Rethunk-Tech/vdf/v2?utm_source=godoc)](https://pkg.go.dev/github.com/andygrunwald/vdf)
+[![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/Rethunk-Tech/vdf/v2)
 
 A Lexer and Parser for [Valves Data Format (known as vdf)](https://developer.valvesoftware.com/wiki/KeyValues) written in Go.
 
@@ -24,7 +24,7 @@ A Lexer and Parser for [Valves Data Format (known as vdf)](https://developer.val
 It is go gettable
 
 ```
-$ go get github.com/andygrunwald/vdf
+$ go get github.com/Rethunk-Tech/vdf/v2
 ```
 
 ## Usage
@@ -52,7 +52,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/andygrunwald/vdf"
+	"github.com/Rethunk-Tech/vdf/v2"
 )
 
 func main() {
@@ -88,7 +88,7 @@ map[
 
 ## API-Documentation
 
-The official Go package documentation can be found at https://pkg.go.dev/github.com/andygrunwald/vdf.
+The official Go package documentation can be found at https://pkg.go.dev/github.com/Rethunk-Tech/vdf/v2.
 
 ## Development
 

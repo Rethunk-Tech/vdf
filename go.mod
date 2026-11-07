@@ -1,4 +1,4 @@
-module github.com/andygrunwald/vdf
+module github.com/Rethunk-Tech/vdf/v2
 
 go 1.25
 
