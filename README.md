@@ -26,7 +26,7 @@ A worked example and the contracts: [HUMANS.md](HUMANS.md).
 
 ## Features
 
-- `Parse` reads a document into `map[string]any` of strings and nested maps.
+- `NewParser(r).Parse()` reads a document into `map[string]any` of strings and nested maps.
 - `Write` renders that map back out with sorted keys; parse, write, parse yields the same map.
 - Quoted and bare identifiers, escapes, `//` comments and duplicate-key merging.
 - A scanner (`NewScanner`) for callers that want tokens.
