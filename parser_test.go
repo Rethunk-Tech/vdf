@@ -1,6 +1,7 @@
 package vdf
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
@@ -418,8 +419,37 @@ func FuzzParser_Parse(f *testing.F) {
 	for _, tc := range testcases {
 		f.Add(tc)
 	}
+	if entries, err := os.ReadDir("testdata"); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			b, err := os.ReadFile(filepath.Join("testdata", e.Name()))
+			if err == nil {
+				f.Add(string(b))
+			}
+		}
+	}
 	f.Fuzz(func(t *testing.T, input string) {
-		_, _ = NewParser(strings.NewReader(input)).Parse()
+		if len(input) > 65536 {
+			return
+		}
+		m, err := NewParser(strings.NewReader(input)).Parse()
+		if err != nil {
+			return
+		}
+		var buf bytes.Buffer
+		if err := Write(&buf, m); err != nil {
+			t.Fatalf("Write after successful Parse: %v\nmap: %#v", err, m)
+		}
+		written := buf.String()
+		m2, err := NewParser(strings.NewReader(written)).Parse()
+		if err != nil {
+			t.Fatalf("Parse after Write: %v\nwritten:\n%s", err, written)
+		}
+		if !reflect.DeepEqual(m, m2) {
+			t.Fatalf("round-trip map mismatch\nin: %#v\nout: %#v\nwritten:\n%s", m, m2, written)
+		}
 	})
 }
 
