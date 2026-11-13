@@ -38,6 +38,8 @@ func TestParse_Fidelity(t *testing.T) {
 		{"bare tokens", `"a"{ "k" -1 "z" #x timeout 5.0 Game |gameinfo_path|. url http://x/y path C:\x\y }`,
 			map[string]any{"a": map[string]any{"k": "-1", "z": "#x", "timeout": "5.0", "Game": "|gameinfo_path|.", "url": "http://x/y", "path": `C:\x\y`}}},
 		{"bare token ends at a brace or quote", `a{k"v"s{x y}}`, map[string]any{"a": map[string]any{"k": "v", "s": map[string]any{"x": "y"}}}},
+		{"conditionals are skipped", `"a"{ "k" "v" [$WIN32] "z" [$OSX||$LINUX] "w" "s" [!$X360] { "x" "y" } [$WIN32] "q" "[$X]" }`,
+			map[string]any{"a": map[string]any{"k": "v", "z": "w", "s": map[string]any{"x": "y"}, "q": "[$X]"}}},
 		{"duplicate sections merge", `"a"{ "s" {"p" "1"} "s" {"q" "2"} }`, map[string]any{"a": map[string]any{"s": map[string]any{"p": "1", "q": "2"}}}},
 	}
 	for _, tt := range tests {

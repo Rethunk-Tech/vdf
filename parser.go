@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // Parser represents a parser.
@@ -101,17 +102,26 @@ func (p *Parser) Parse() (map[string]any, error) {
 }
 
 // scanString returns the next quoted or bare string as an Ident, or the next structural token.
+// A bare platform conditional such as [$WIN32] is skipped: the map has no way to hold one, and
+// the package does not pick a platform, so the entry it guards is kept.
 func (p *Parser) scanString() (Token, string, error) {
-	tok, lit := p.scanIgnoreWSAndComments()
-	switch tok {
-	case QuotationMark:
-		return p.scanIdentSurroundedQuotationMark()
-	case Ident, Illegal, EscapeSequence:
-		return Ident, p.scanBare(lit), nil
-	case EOF, WS, EOL, CurlyBraceOpen, CurlyBraceClose, CommentDoubleSlash:
+	for {
+		tok, lit := p.scanIgnoreWSAndComments()
+		switch tok {
+		case QuotationMark:
+			return p.scanIdentSurroundedQuotationMark()
+		case Ident, Illegal, EscapeSequence:
+			if bare := p.scanBare(lit); !isConditional(bare) {
+				return Ident, bare, nil
+			}
+		case EOF, WS, EOL, CurlyBraceOpen, CurlyBraceClose, CommentDoubleSlash:
+			return tok, lit, nil
+		}
 	}
+}
 
-	return tok, lit, nil
+func isConditional(bare string) bool {
+	return strings.HasPrefix(bare, "[") && strings.HasSuffix(bare, "]")
 }
 
 // scanBare reads the rest of an unquoted string. Like Valve's KeyValues reader, it runs to the next
