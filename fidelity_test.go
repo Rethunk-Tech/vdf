@@ -36,11 +36,15 @@ func TestParse_Fidelity(t *testing.T) {
 		{"unicode", "\"a\"{ \"k\" \"日本語\" \"é\" \"w\" }", map[string]any{"a": map[string]any{"k": "日本語", "é": "w"}}},
 		{"url in value", "\"a\"{ \"k\" \"http://x/y\" }", map[string]any{"a": map[string]any{"k": "http://x/y"}}},
 		{"escaped quote and backslash", `"a"{ "k" "say \"hi\" C:\\x" }`, map[string]any{"a": map[string]any{"k": `say "hi" C:\x`}}},
-		{"bare tokens", `"a"{ "k" -1 "z" #x timeout 5.0 Game |gameinfo_path|. url http://x/y path C:\x\y }`,
-			map[string]any{"a": map[string]any{"k": "-1", "z": "#x", "timeout": "5.0", "Game": "|gameinfo_path|.", "url": "http://x/y", "path": `C:\x\y`}}},
+		{
+			"bare tokens", `"a"{ "k" -1 "z" #x timeout 5.0 Game |gameinfo_path|. url http://x/y path C:\x\y }`,
+			map[string]any{"a": map[string]any{"k": "-1", "z": "#x", "timeout": "5.0", "Game": "|gameinfo_path|.", "url": "http://x/y", "path": `C:\x\y`}},
+		},
 		{"bare token ends at a brace or quote", `a{k"v"s{x y}}`, map[string]any{"a": map[string]any{"k": "v", "s": map[string]any{"x": "y"}}}},
-		{"conditionals are skipped", `"a"{ "k" "v" [$WIN32] "z" [$OSX||$LINUX] "w" "s" [!$X360] { "x" "y" } [$WIN32] "q" "[$X]" }`,
-			map[string]any{"a": map[string]any{"k": "v", "z": "w", "s": map[string]any{"x": "y"}, "q": "[$X]"}}},
+		{
+			"conditionals are skipped", `"a"{ "k" "v" [$WIN32] "z" [$OSX||$LINUX] "w" "s" [!$X360] { "x" "y" } [$WIN32] "q" "[$X]" }`,
+			map[string]any{"a": map[string]any{"k": "v", "z": "w", "s": map[string]any{"x": "y"}, "q": "[$X]"}},
+		},
 		{"duplicate sections merge", `"a"{ "s" {"p" "1"} "s" {"q" "2"} }`, map[string]any{"a": map[string]any{"s": map[string]any{"p": "1", "q": "2"}}}},
 	}
 	for _, tt := range tests {
