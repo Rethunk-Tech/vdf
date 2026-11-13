@@ -93,7 +93,6 @@ func (p *Parser) Parse() (map[string]any, error) {
 		return nil, fmt.Errorf("found %q, expected a curly brace as second part (to open up the first level)", lit)
 	}
 
-	p.unscan()
 	m[key], err = p.parseMap()
 	if err != nil {
 		return nil, err
@@ -141,15 +140,17 @@ func (p *Parser) scanBare(first string) string {
 	}
 }
 
+// parseMap reads a section body after its opening brace. Open sections live on a slice rather than
+// the call stack: Go aborts the process on stack exhaustion, so nesting depth may only cost heap.
 func (p *Parser) parseMap() (map[string]any, error) {
-	m := make(map[string]any)
-
-	// The first part should be a open curly brace
-	tok, _ := p.scanIgnoreWSAndComments()
-	if tok != CurlyBraceOpen {
-		return m, nil
+	type section struct {
+		m   map[string]any
+		key string // the section's name in its parent
 	}
+	open := []section{{m: make(map[string]any)}}
 	for {
+		m := open[len(open)-1].m
+
 		// At first: A key
 		tok, key, err := p.scanString()
 		if err != nil {
@@ -158,7 +159,13 @@ func (p *Parser) parseMap() (map[string]any, error) {
 		switch tok {
 		case Ident:
 		case CurlyBraceClose:
-			return m, nil
+			done := open[len(open)-1]
+			open = open[:len(open)-1]
+			if len(open) == 0 {
+				return done.m, nil
+			}
+			mergeMap(open[len(open)-1].m, done.m, done.key)
+			continue
 		case EOF:
 			return nil, p.eofError()
 		case Illegal, WS, EOL, CurlyBraceOpen, QuotationMark, EscapeSequence, CommentDoubleSlash:
@@ -174,12 +181,7 @@ func (p *Parser) parseMap() (map[string]any, error) {
 		case Ident:
 			m[key] = lit
 		case CurlyBraceOpen:
-			p.unscan()
-			m1, err := p.parseMap()
-			if err != nil {
-				return nil, err
-			}
-			mergeMap(m, m1, key)
+			open = append(open, section{m: make(map[string]any), key: key})
 		case EOF:
 			return nil, p.eofError()
 		case Illegal, QuotationMark, EscapeSequence, WS, EOL, CurlyBraceClose, CommentDoubleSlash:
@@ -254,13 +256,18 @@ func mergeMap(m, r map[string]any, key string) map[string]any {
 }
 
 func mergeInto(dst, src map[string]any) {
-	for k, v := range src {
-		sv, srcIsMap := v.(map[string]any)
-		dv, dstIsMap := dst[k].(map[string]any)
-		if srcIsMap && dstIsMap {
-			mergeInto(dv, sv)
-		} else {
-			dst[k] = v
+	type pair struct{ dst, src map[string]any }
+	for pending := []pair{{dst, src}}; len(pending) > 0; {
+		next := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		for k, v := range next.src {
+			sv, srcIsMap := v.(map[string]any)
+			dv, dstIsMap := next.dst[k].(map[string]any)
+			if srcIsMap && dstIsMap {
+				pending = append(pending, pair{dv, sv})
+			} else {
+				next.dst[k] = v
+			}
 		}
 	}
 }

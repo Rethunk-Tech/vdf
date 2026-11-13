@@ -2,6 +2,7 @@ package vdf
 
 import (
 	"errors"
+	"runtime/debug"
 	"strings"
 	"testing"
 
@@ -78,4 +79,15 @@ func TestParse_DeepNesting(t *testing.T) {
 	in := `"a"` + strings.Repeat(`{ "s" `, depth) + `{ "k" "v" }` + strings.Repeat(`}`, depth)
 	_, err := NewParser(strings.NewReader(in)).Parse()
 	require.NoError(t, err)
+}
+
+// Recursion would hit the stack limit, a fatal error no caller can recover from, so nesting depth must cost heap only.
+func TestParse_DeepNestingStaysOffTheStack(t *testing.T) {
+	defer debug.SetMaxStack(debug.SetMaxStack(256 << 10))
+
+	const depth = 20000
+	section := strings.Repeat(`"s"{`, depth) + strings.Repeat(`}`, depth)
+	got, err := NewParser(strings.NewReader(`"a"{` + section + section + `}`)).Parse()
+	require.NoError(t, err)
+	require.NotNil(t, got)
 }
