@@ -27,7 +27,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: Rethunk-Tech/gh-actions/setup-go@4163d2a5a37b1538dd45926e264b3c4027b5cbaa # v1.24
+        uses: Rethunk-Tech/gh-actions/setup-go@48cc92115e037b2ee57da2264f318265c8a78ec7 # v1.26
         with:
           go-version-file: go.mod
 
@@ -60,7 +60,7 @@ jobs:
 
       # The race detector keeps a goroutine from becoming shared state unnoticed.
       - name: Test
-        uses: Rethunk-Tech/gh-actions/setup-go@4163d2a5a37b1538dd45926e264b3c4027b5cbaa # v1.24
+        uses: Rethunk-Tech/gh-actions/setup-go@48cc92115e037b2ee57da2264f318265c8a78ec7 # v1.26
         with:
           go-version-file: go.mod
           run-test-race: "true"
