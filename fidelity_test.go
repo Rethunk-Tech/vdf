@@ -35,6 +35,9 @@ func TestParse_Fidelity(t *testing.T) {
 		{"unicode", "\"a\"{ \"k\" \"日本語\" \"é\" \"w\" }", map[string]any{"a": map[string]any{"k": "日本語", "é": "w"}}},
 		{"url in value", "\"a\"{ \"k\" \"http://x/y\" }", map[string]any{"a": map[string]any{"k": "http://x/y"}}},
 		{"escaped quote and backslash", `"a"{ "k" "say \"hi\" C:\\x" }`, map[string]any{"a": map[string]any{"k": `say "hi" C:\x`}}},
+		{"bare tokens", `"a"{ "k" -1 "z" #x timeout 5.0 Game |gameinfo_path|. url http://x/y path C:\x\y }`,
+			map[string]any{"a": map[string]any{"k": "-1", "z": "#x", "timeout": "5.0", "Game": "|gameinfo_path|.", "url": "http://x/y", "path": `C:\x\y`}}},
+		{"bare token ends at a brace or quote", `a{k"v"s{x y}}`, map[string]any{"a": map[string]any{"k": "v", "s": map[string]any{"x": "y"}}}},
 		{"duplicate sections merge", `"a"{ "s" {"p" "1"} "s" {"q" "2"} }`, map[string]any{"a": map[string]any{"s": map[string]any{"p": "1", "q": "2"}}}},
 	}
 	for _, tt := range tests {
@@ -48,13 +51,11 @@ func TestParse_Fidelity(t *testing.T) {
 
 func TestParse_RejectsInsteadOfTruncating(t *testing.T) {
 	for name, in := range map[string]string{
-		"unquoted negative value": `"a"{ "k" -1 "z" "w" }`,
-		"unquoted hash value":     `"a"{ "k" #x "z" "w" }`,
-		"unterminated section":    `"a"{ "k" "v"`,
-		"unterminated nested":     `"a"{ "k" "v" "s" { "x" "y" `,
-		"key without value":       `"a"{ "k" }`,
-		"dangling key at eof":     `"a"{ "k" "v" "z"`,
-		"single slash":            `"a"{ "k" "v" / "z" "w" }`,
+		"unterminated section": `"a"{ "k" "v"`,
+		"unterminated nested":  `"a"{ "k" "v" "s" { "x" "y" `,
+		"key without value":    `"a"{ "k" }`,
+		"dangling key at eof":  `"a"{ "k" "v" "z"`,
+		"single slash":         `"a"{ "k" "v" / "z" "w" }`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := NewParser(strings.NewReader(in)).Parse()

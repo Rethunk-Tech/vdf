@@ -78,7 +78,7 @@ func (p *Parser) Parse() (map[string]any, error) {
 	m := make(map[string]any)
 
 	// The first part is a simple ident (as a main map key)
-	tok, lit, err := p.scanMapKey()
+	tok, lit, err := p.scanString()
 	if err != nil {
 		return nil, err
 	}
@@ -100,18 +100,35 @@ func (p *Parser) Parse() (map[string]any, error) {
 	return m, nil
 }
 
-func (p *Parser) scanMapKey() (Token, string, error) {
+// scanString returns the next quoted or bare string as an Ident, or the next structural token.
+func (p *Parser) scanString() (Token, string, error) {
 	tok, lit := p.scanIgnoreWSAndComments()
-
-	// Get the key
-	if tok == QuotationMark {
+	switch tok {
+	case QuotationMark:
 		return p.scanIdentSurroundedQuotationMark()
-	}
-	if tok == Ident {
-		return tok, lit, nil
+	case Ident, Illegal, EscapeSequence:
+		return Ident, p.scanBare(lit), nil
+	case EOF, WS, EOL, CurlyBraceOpen, CurlyBraceClose, CommentDoubleSlash:
 	}
 
-	return Illegal, lit, nil
+	return tok, lit, nil
+}
+
+// scanBare reads the rest of an unquoted string. Like Valve's KeyValues reader, it runs to the next
+// whitespace, quotation mark or curly brace and keeps every other character, backslashes included.
+func (p *Parser) scanBare(first string) string {
+	var buf bytes.Buffer
+	buf.WriteString(first)
+	for {
+		tok, lit := p.scan(true)
+		switch tok {
+		case Ident, Illegal, EscapeSequence, CommentDoubleSlash:
+			buf.WriteString(lit)
+		case EOF, WS, EOL, QuotationMark, CurlyBraceOpen, CurlyBraceClose:
+			p.unscan()
+			return buf.String()
+		}
+	}
 }
 
 func (p *Parser) parseMap() (map[string]any, error) {
@@ -122,35 +139,28 @@ func (p *Parser) parseMap() (map[string]any, error) {
 	if tok != CurlyBraceOpen {
 		return m, nil
 	}
-	var err error
 	for {
 		// At first: A key
-		var key string
-		tok, lit := p.scanIgnoreWSAndComments()
+		tok, key, err := p.scanString()
+		if err != nil {
+			return nil, err
+		}
 		switch tok {
-		case QuotationMark:
-			_, key, err = p.scanIdentSurroundedQuotationMark()
-			if err != nil {
-				return nil, err
-			}
 		case Ident:
-			key = lit
 		case CurlyBraceClose:
 			return m, nil
 		case EOF:
 			return nil, p.eofError()
-		case Illegal, WS, EOL, CurlyBraceOpen, EscapeSequence, CommentDoubleSlash:
-			return nil, fmt.Errorf("%w: unexpected %q where a key was expected", ErrNotValidFormat, lit)
+		case Illegal, WS, EOL, CurlyBraceOpen, QuotationMark, EscapeSequence, CommentDoubleSlash:
+			return nil, fmt.Errorf("%w: unexpected %q where a key was expected", ErrNotValidFormat, key)
 		}
 
 		// After this: A value or a map again
-		tok, lit = p.scanIgnoreWSAndComments()
+		tok, lit, err := p.scanString()
+		if err != nil {
+			return nil, err
+		}
 		switch tok {
-		case QuotationMark:
-			_, m[key], err = p.scanIdentSurroundedQuotationMark()
-			if err != nil {
-				return nil, err
-			}
 		case Ident:
 			m[key] = lit
 		case CurlyBraceOpen:
@@ -160,10 +170,9 @@ func (p *Parser) parseMap() (map[string]any, error) {
 				return nil, err
 			}
 			mergeMap(m, m1, key)
-
 		case EOF:
 			return nil, p.eofError()
-		case Illegal, EscapeSequence, WS, EOL, CurlyBraceClose, CommentDoubleSlash:
+		case Illegal, QuotationMark, EscapeSequence, WS, EOL, CurlyBraceClose, CommentDoubleSlash:
 			return nil, fmt.Errorf("%w: unexpected %q where the value of %q was expected", ErrNotValidFormat, lit, key)
 		}
 	}
