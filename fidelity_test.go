@@ -91,3 +91,11 @@ func TestParse_DeepNestingStaysOffTheStack(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, got)
 }
+
+func TestParse_ManyCommentLinesStayOffTheStack(t *testing.T) {
+	defer debug.SetMaxStack(debug.SetMaxStack(256 << 10))
+
+	got, err := NewParser(strings.NewReader(`"a"{` + strings.Repeat("//\n", 20000) + `"k" "v"}`)).Parse()
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"a": map[string]any{"k": "v"}}, got)
+}

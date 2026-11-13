@@ -46,28 +46,20 @@ func (p *Parser) unscan() { p.buf.n = 1 }
 // scanIgnoreWSAndComments ignores whitespace, end-of-line and comment tokens
 // during scanning. It returns the next token + string that is not WS, EOL or CommentDoubleSlash.
 func (p *Parser) scanIgnoreWSAndComments() (Token, string) {
-	tok, lit := p.scan(false)
+	for {
+		tok, lit := p.scan(false)
 
-	// If we have a whitespace, just continue scanning until the next token appears
-	for tok == WS || tok == EOL {
-		tok, lit = p.scan(false)
-	}
-
-	// If we have a comment, we need to drop the complete line, because
-	// the text would be detect as an ident. But the text after a "//"
-	// is part of the comment. So we ignore the complete line.
-	if tok == CommentDoubleSlash {
-		// Scan until the next line ending
-		for {
-			tok, _ = p.scan(true)
-			if tok == EOL || tok == EOF {
-				break
+		// The text after a "//" would scan as idents, so a comment drops the rest of its line.
+		if tok == CommentDoubleSlash {
+			for tok != EOL && tok != EOF {
+				tok, _ = p.scan(true)
 			}
+			continue
 		}
-		return p.scanIgnoreWSAndComments()
+		if tok != WS && tok != EOL {
+			return tok, lit
+		}
 	}
-
-	return tok, lit
 }
 
 // Parse is the main entry point of the vdf parser.
