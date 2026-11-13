@@ -408,6 +408,7 @@ func FuzzParser_Parse(f *testing.F) {
    "attr2" "world"
  }
 }`,
+		"GameInfo\n{\n\tGame\t|gameinfo_path|.\n\tSteamAppId 220 [$WIN32]\n\ts [!$X360] { k 5.0 } [$OSX]\n}",
 	}
 	for _, tc := range testcases {
 		f.Add(tc)

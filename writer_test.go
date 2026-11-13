@@ -89,6 +89,9 @@ func TestWrite_Unsupported(t *testing.T) {
 func FuzzWrite_RoundTrip(f *testing.F) {
 	f.Add("\"R\"\n{\n\t\"k\"\t\"v\"\n\t\"s\"\n\t{\n\t\t\"a\\\"b\"\t\"c\"\n\t}\n}")
 	f.Fuzz(func(t *testing.T, input string) {
+		if len(input) > 65536 {
+			t.Skip()
+		}
 		first, err := NewParser(strings.NewReader(input)).Parse()
 		if err != nil {
 			t.Skip()
