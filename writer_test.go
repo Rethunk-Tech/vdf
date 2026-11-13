@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"runtime/debug"
 	"strings"
 	"testing"
 
@@ -103,4 +104,24 @@ func FuzzWrite_RoundTrip(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, first, second)
 	})
+}
+
+// A recursive writer would hit the stack limit, and indenting every level would make the output quadratic in depth.
+func TestWrite_DeepNesting(t *testing.T) {
+	restore := debug.SetMaxStack(256 << 10)
+	defer debug.SetMaxStack(restore)
+
+	const depth = 20000
+	in := `"a"{` + strings.Repeat(`"s"{`, depth) + `"k" "v"` + strings.Repeat(`}`, depth) + `}`
+	m, err := NewParser(strings.NewReader(in)).Parse()
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	require.NoError(t, Write(&buf, m))
+	require.Less(t, buf.Len(), 300*depth)
+
+	again, err := NewParser(&buf).Parse()
+	require.NoError(t, err)
+	debug.SetMaxStack(restore) // reflect.DeepEqual recurses
+	require.Equal(t, m, again)
 }

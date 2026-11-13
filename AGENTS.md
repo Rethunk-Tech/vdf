@@ -19,7 +19,11 @@ cannot resolve that check from PATH.
 - The parser drops a backslash and keeps the character after it, so `quote` escapes only `"` and `\`;
   any other escape would not round-trip.
 - Duplicate keys merge in `mergeMap`; the map cannot represent them, so `Write` never emits one.
-- The parser has no depth or size limit. That bound is the caller's policy, not the package's.
+- The parser has no depth or size limit. That bound is the caller's policy, not the package's. So
+  parsing, merging and writing hold open sections on a slice, never the call stack (Go aborts the
+  process on stack exhaustion), and `Write` stops indenting past `maxIndent` to keep output linear.
+- Bare tokens run to whitespace, a quotation mark or a curly brace, as in Valve's reader. A bare
+  `[...]` token is a platform conditional and is skipped, keeping the entry it guards.
 
 ## Files
 

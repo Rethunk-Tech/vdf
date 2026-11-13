@@ -28,7 +28,7 @@ func Write(w io.Writer, m map[string]any) error {
 		if !ok {
 			return fmt.Errorf("%w: root key %q holds %T, want map[string]any", ErrUnsupportedValue, key, value)
 		}
-		if err := writeSection(&buf, key, root, 0); err != nil {
+		if err := writeSection(&buf, key, root); err != nil {
 			return err
 		}
 	}
@@ -38,30 +38,49 @@ func Write(w io.Writer, m map[string]any) error {
 	return err
 }
 
-func writeSection(buf *bytes.Buffer, key string, m map[string]any, depth int) error {
-	indent := strings.Repeat("\t", depth)
-	buf.WriteString(indent + quote(key) + "\n" + indent + "{\n")
+// maxIndent bounds the tabs on a line. Indenting every level makes the output quadratic in depth;
+// past this depth nobody reads the nesting from the tabs, and the parser ignores them anyway.
+const maxIndent = 64
 
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+// writeSection keeps open sections on a slice rather than the call stack: Go aborts the process on
+// stack exhaustion, so nesting depth may only cost heap.
+func writeSection(buf *bytes.Buffer, key string, m map[string]any) error {
+	type section struct {
+		m    map[string]any
+		keys []string // not yet written, in order
 	}
-	slices.Sort(keys)
+	indent := func(depth int) string { return strings.Repeat("\t", min(depth, maxIndent)) }
+	start := func(key string, m map[string]any, depth int) section {
+		buf.WriteString(indent(depth) + quote(key) + "\n" + indent(depth) + "{\n")
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		slices.Sort(keys)
 
-	for _, k := range keys {
-		switch v := m[k].(type) {
+		return section{m: m, keys: keys}
+	}
+
+	open := []section{start(key, m, 0)}
+	for len(open) > 0 {
+		depth := len(open) - 1
+		top := &open[depth]
+		if len(top.keys) == 0 {
+			buf.WriteString(indent(depth) + "}\n")
+			open = open[:depth]
+			continue
+		}
+		k := top.keys[0]
+		top.keys = top.keys[1:]
+		switch v := top.m[k].(type) {
 		case string:
-			buf.WriteString(indent + "\t" + quote(k) + "\t\t" + quote(v) + "\n")
+			buf.WriteString(indent(depth+1) + quote(k) + "\t\t" + quote(v) + "\n")
 		case map[string]any:
-			if err := writeSection(buf, k, v, depth+1); err != nil {
-				return err
-			}
+			open = append(open, start(k, v, depth+1))
 		default:
 			return fmt.Errorf("%w: key %q holds %T, want string or map[string]any", ErrUnsupportedValue, k, v)
 		}
 	}
-
-	buf.WriteString(indent + "}\n")
 
 	return nil
 }
