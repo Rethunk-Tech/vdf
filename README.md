@@ -28,7 +28,7 @@ A worked example and the contracts: [HUMANS.md](HUMANS.md).
 
 - `NewParser(r).Parse()` reads a document into `map[string]any` of strings and nested maps.
 - `Write` renders that map back out with sorted keys; parse, write, parse yields the same map.
-- Quoted and bare identifiers, escapes, `//` comments and duplicate-key merging.
+- Quoted and bare identifiers, escapes, `//` comments and recursive duplicate-section merging (later scalars win; a later section or scalar replaces an earlier one of the other kind).
 - A scanner (`NewScanner`) for callers that want tokens.
 - Fuzz targets for the scanner, parser and the write round trip.
 

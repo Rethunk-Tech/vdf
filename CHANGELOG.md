@@ -6,6 +6,10 @@ Notable changes to `vdf`. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Duplicate sections merge recursively, as in Valve's KeyValues; a section after a same-named string key is kept.
+
 ## [2.1.0]
 
 ### Added

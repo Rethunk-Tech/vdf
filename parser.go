@@ -213,17 +213,26 @@ func (p *Parser) scanIdentSurroundedQuotationMark() (Token, string, error) {
 	return Ident, buf.String(), nil
 }
 
-// VDF files can contain duplicates of keys, when this occurs we need to merge the existing map and the returned map.
+// VDF files can contain duplicate sections; like Valve's KeyValues, they merge recursively.
+// Later scalar keys win over earlier ones, and when a section and a scalar share a name the later one wins.
 func mergeMap(m, r map[string]any, key string) map[string]any {
-	if _, ok := m[key]; !ok {
-		m[key] = r
+	if t, ok := m[key].(map[string]any); ok {
+		mergeInto(t, r)
 	} else {
-		for k, v := range r {
-			if t, ok := m[key].(map[string]any); ok {
-				t[k] = v
-			}
-		}
+		m[key] = r
 	}
 
 	return m
+}
+
+func mergeInto(dst, src map[string]any) {
+	for k, v := range src {
+		sv, srcIsMap := v.(map[string]any)
+		dv, dstIsMap := dst[k].(map[string]any)
+		if srcIsMap && dstIsMap {
+			mergeInto(dv, sv)
+		} else {
+			dst[k] = v
+		}
+	}
 }
