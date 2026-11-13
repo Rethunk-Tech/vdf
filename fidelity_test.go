@@ -50,6 +50,11 @@ func TestParse_RejectsInsteadOfTruncating(t *testing.T) {
 	for name, in := range map[string]string{
 		"unquoted negative value": `"a"{ "k" -1 "z" "w" }`,
 		"unquoted hash value":     `"a"{ "k" #x "z" "w" }`,
+		"unterminated section":    `"a"{ "k" "v"`,
+		"unterminated nested":     `"a"{ "k" "v" "s" { "x" "y" `,
+		"key without value":       `"a"{ "k" }`,
+		"dangling key at eof":     `"a"{ "k" "v" "z"`,
+		"single slash":            `"a"{ "k" "v" / "z" "w" }`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := NewParser(strings.NewReader(in)).Parse()

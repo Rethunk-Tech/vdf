@@ -288,21 +288,14 @@ func TestParser_Parse(t *testing.T) {
 				require.Equal(t, expected, got)
 			},
 		},
-		// Comments that start with "// my comment" are supported
-		// Broken comments like "/ my comment" are not.
-		// The file will be partially parsed.
+		// Comments that start with "// my comment" are supported.
+		// A broken comment like "/ my comment" is an error, never a partial map.
 		{
 			name:     "broken and unsupported comment",
 			fileName: "testdata/broken_comment.cfg",
 			want: func(got map[string]any, err error) {
-				require.NoError(t, err)
-				expected := map[string]any{
-					"Broken Comment Sample v.1": map[string]any{
-						"uri":     "http://127.0.0.1:3456",
-						"timeout": "8.0",
-					},
-				}
-				require.Equal(t, expected, got)
+				require.ErrorIs(t, err, ErrNotValidFormat)
+				require.Nil(t, got)
 			},
 		},
 		// Each level, even the first one, requires

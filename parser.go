@@ -135,11 +135,12 @@ func (p *Parser) parseMap() (map[string]any, error) {
 			}
 		case Ident:
 			key = lit
-
-			// CommentDoubleSlash cannot occur here: scanIgnoreWSAndComments skips comments.
-			// CurlyBraceClose ends the map.
-		case Illegal, EOF, WS, EOL, CurlyBraceOpen, CurlyBraceClose, EscapeSequence, CommentDoubleSlash:
-			return m, p.s.err
+		case CurlyBraceClose:
+			return m, nil
+		case EOF:
+			return nil, p.eofError()
+		case Illegal, WS, EOL, CurlyBraceOpen, EscapeSequence, CommentDoubleSlash:
+			return nil, fmt.Errorf("%w: unexpected %q where a key was expected", ErrNotValidFormat, lit)
 		}
 
 		// After this: A value or a map again
@@ -160,13 +161,21 @@ func (p *Parser) parseMap() (map[string]any, error) {
 			}
 			mergeMap(m, m1, key)
 
-			// CurlyBraceClose ends the map.
-		case Illegal, EscapeSequence:
-			return nil, fmt.Errorf("%w: unexpected %q where a value was expected", ErrNotValidFormat, lit)
-		case EOF, WS, EOL, CurlyBraceClose, CommentDoubleSlash:
-			return m, p.s.err
+		case EOF:
+			return nil, p.eofError()
+		case Illegal, EscapeSequence, WS, EOL, CurlyBraceClose, CommentDoubleSlash:
+			return nil, fmt.Errorf("%w: unexpected %q where the value of %q was expected", ErrNotValidFormat, lit, key)
 		}
 	}
+}
+
+// eofError reports input that ends inside a section: a read error if one stopped the scanner, else a truncated document.
+func (p *Parser) eofError() error {
+	if p.s.err != nil {
+		return p.s.err
+	}
+
+	return fmt.Errorf("%w: unexpected end of input inside a section", ErrNotValidFormat)
 }
 
 func (p *Parser) scanIdentSurroundedQuotationMark() (Token, string, error) {
