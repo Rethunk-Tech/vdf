@@ -9,6 +9,10 @@ Notable changes to `vdf`. The format follows
 ### Fixed
 
 - Duplicate sections merge recursively, as in Valve's KeyValues; a section after a same-named string key is kept.
+- `Parse` returns `ErrNotValidFormat` for a truncated section, a key without a value or a stray token, instead of a partial map.
+- Bare tokens such as `5.0`, `-1` and `|gameinfo_path|.` are read whole, as in Valve's KeyValues.
+- Platform conditionals such as `[$WIN32]` are skipped instead of being read as keys.
+- Deep nesting and long comment runs no longer overflow the stack, and `Write` output stays linear in nesting depth.
 
 ## [2.1.0]
 
