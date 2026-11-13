@@ -3,17 +3,24 @@ package vdf
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 )
 
 // Scanner represents a lexical scanner.
 type Scanner struct {
-	r *bufio.Reader
+	r   *bufio.Reader
+	err error // first read error other than io.EOF
 }
 
 // NewScanner returns a new instance of Scanner.
 func NewScanner(r io.Reader) *Scanner {
-	return &Scanner{r: bufio.NewReader(r)}
+	s := &Scanner{r: bufio.NewReader(r)}
+	if ch, _, err := s.r.ReadRune(); err == nil && ch != '\ufeff' {
+		_ = s.r.UnreadRune()
+	}
+
+	return s
 }
 
 // read reads the next rune from the buffered reader.
@@ -21,6 +28,9 @@ func NewScanner(r io.Reader) *Scanner {
 func (s *Scanner) read() rune {
 	ch, _, err := s.r.ReadRune()
 	if err != nil {
+		if !errors.Is(err, io.EOF) && s.err == nil {
+			s.err = err
+		}
 		return eof
 	}
 	return ch

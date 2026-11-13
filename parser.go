@@ -139,7 +139,7 @@ func (p *Parser) parseMap() (map[string]any, error) {
 			// CommentDoubleSlash cannot occur here: scanIgnoreWSAndComments skips comments.
 			// CurlyBraceClose ends the map.
 		case Illegal, EOF, WS, EOL, CurlyBraceOpen, CurlyBraceClose, EscapeSequence, CommentDoubleSlash:
-			return m, nil
+			return m, p.s.err
 		}
 
 		// After this: A value or a map again
@@ -161,8 +161,10 @@ func (p *Parser) parseMap() (map[string]any, error) {
 			mergeMap(m, m1, key)
 
 			// CurlyBraceClose ends the map.
-		case Illegal, EOF, WS, EOL, CurlyBraceClose, EscapeSequence, CommentDoubleSlash:
-			return m, nil
+		case Illegal, EscapeSequence:
+			return nil, fmt.Errorf("%w: unexpected %q where a value was expected", ErrNotValidFormat, lit)
+		case EOF, WS, EOL, CurlyBraceClose, CommentDoubleSlash:
+			return m, p.s.err
 		}
 	}
 }
@@ -173,6 +175,9 @@ func (p *Parser) scanIdentSurroundedQuotationMark() (Token, string, error) {
 	for {
 		tok, lit := p.scan(true)
 		if tok == EOF {
+			if p.s.err != nil {
+				return tok, "", p.s.err
+			}
 			return tok, "", ErrNotValidFormat
 		}
 		if tok == QuotationMark && !escaped {
