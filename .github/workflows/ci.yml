@@ -26,10 +26,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # setup-go leaves govulncheck off unless this input is true, so a known vuln would not fail CI.
       - name: Set up Go
         uses: Rethunk-Tech/gh-actions/setup-go@8b1855d0694508efbf7b94b1628a61e447da80f9 # v1.28
         with:
           go-version-file: go.mod
+          run-govulncheck: "true"
 
       # Without this cache every pass re-checks every package. The key takes only the inputs
       # that touch every package, and the prefix restore-key keeps a changed key from starting cold.
