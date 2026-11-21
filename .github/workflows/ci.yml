@@ -46,7 +46,7 @@ jobs:
       # repository's verdict without a commit here.
       - name: Install gate
         # gate needs a newer Go than this module pins; let go fetch that toolchain for the install only.
-        run: GOTOOLCHAIN=auto go install github.com/Rethunk-Tech/rethunk-gate-cli/cmd/gate@v0.9.0
+        run: GOTOOLCHAIN=auto go install github.com/Rethunk-Tech/rethunk-gate-cli/cmd/gate@v0.10.1
 
       - name: Gate
         run: gate --timeout 15m
