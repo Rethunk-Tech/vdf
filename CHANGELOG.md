@@ -6,6 +6,8 @@ Notable changes to `vdf`. The format follows
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-11-21
+
 ### Fixed
 
 - Duplicate sections merge recursively, as in Valve's KeyValues; a section after a same-named string key is kept.
@@ -29,5 +31,6 @@ Notable changes to `vdf`. The format follows
 
 - `Parse` returns on a comment at the end of the input instead of looping.
 
-[Unreleased]: https://github.com/Rethunk-Tech/vdf/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/Rethunk-Tech/vdf/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/Rethunk-Tech/vdf/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/Rethunk-Tech/vdf/releases/tag/v2.1.0
