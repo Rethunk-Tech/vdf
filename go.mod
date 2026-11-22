@@ -1,6 +1,6 @@
 module github.com/Rethunk-Tech/vdf/v2
 
-go 1.27.3
+go 1.27.4
 
 // The gate's tool versions belong to the module, not to whatever CI happens to
 // have installed globally: a linter or scanner bump arrives as a diff to this
